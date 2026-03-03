@@ -1,0 +1,1 @@
+05 12 * * * /Users/derin/Desktop/ANTIGRAVITY-AGENT/anti-claw/venv/bin/python /Users/derin/Desktop/ANTIGRAVITY-AGENT/anti-claw/data/send_cron_test.py

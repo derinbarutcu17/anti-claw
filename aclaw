@@ -1,0 +1,238 @@
+#!/usr/bin/env bash
+# aclaw — Anti-claw + Proxy management CLI
+# Usage: aclaw <command>
+#
+# Commands:
+#   start       Start proxy + bot
+#   stop        Stop proxy + bot
+#   restart     Restart proxy + bot
+#   status      Show status of both services
+#   logs        Tail all logs live (Ctrl-C to stop)
+#   logs bot    Tail bot log only
+#   logs proxy  Tail proxy log only
+#   logs err    Tail error logs (daemon.err + proxy.err)
+
+set -euo pipefail
+
+BOT_LABEL="com.anti-claw.daemon"
+PROXY_LABEL="com.antigravity-claude-proxy"
+USER_ID=$(id -u)
+DOMAIN="gui/$USER_ID"
+
+LOG_BOT="/Users/derin/Desktop/ANTIGRAVITY-AGENT/anti-claw/data/logs/anti-claw.log"
+LOG_BOT_ERR="/Users/derin/Desktop/ANTIGRAVITY-AGENT/anti-claw/data/logs/daemon.err"
+LOG_PROXY="/Users/derin/Desktop/ANTIGRAVITY-AGENT/anti-claw/data/logs/proxy.out"
+LOG_PROXY_ERR="/Users/derin/Desktop/ANTIGRAVITY-AGENT/anti-claw/data/logs/proxy.err"
+
+PROXY_PLIST="$HOME/Library/LaunchAgents/$PROXY_LABEL.plist"
+BOT_PLIST="$HOME/Library/LaunchAgents/$BOT_LABEL.plist"
+
+# ── helpers ──────────────────────────────────────────────────────────────────
+
+is_registered() {
+    launchctl print "$DOMAIN/$1" &>/dev/null
+}
+
+service_pid() {
+    launchctl print "$DOMAIN/$1" 2>/dev/null | awk '/pid =/ { print $3; exit }'
+}
+
+service_status() {
+    local label="$1"
+    local name="$2"
+    if ! is_registered "$label"; then
+        echo "  $name: NOT REGISTERED"
+        return
+    fi
+    local pid
+    pid=$(service_pid "$label")
+    if [[ -n "$pid" && "$pid" != "0" && "$pid" =~ ^[0-9]+$ ]]; then
+        echo "  $name: RUNNING (pid $pid)"
+    else
+        local exit_code
+        exit_code=$(launchctl print "$DOMAIN/$label" 2>/dev/null | awk '/last exit code/ { print $NF; exit }' || echo "?")
+        echo "  $name: STOPPED (last exit: $exit_code)"
+    fi
+}
+
+ensure_log_dir() {
+    mkdir -p "/Users/derin/Desktop/ANTIGRAVITY-AGENT/anti-claw/data/logs"
+}
+
+bootstrap_if_needed() {
+    local label="$1"
+    local plist="$2"
+    if ! is_registered "$label"; then
+        echo "  Registering $label..."
+        launchctl bootstrap "$DOMAIN" "$plist"
+    fi
+}
+
+# ── commands ─────────────────────────────────────────────────────────────────
+
+cmd_start() {
+    ensure_log_dir
+
+    echo "Starting proxy..."
+    bootstrap_if_needed "$PROXY_LABEL" "$PROXY_PLIST"
+    if [[ -z "$(service_pid "$PROXY_LABEL")" ]] || [[ "$(service_pid "$PROXY_LABEL")" == "0" ]]; then
+        launchctl kickstart "$DOMAIN/$PROXY_LABEL" 2>/dev/null || true
+    fi
+
+    # Give proxy a moment to bind port
+    sleep 1
+    if curl -s http://localhost:8080/v1/models &>/dev/null; then
+        echo "  Proxy: ONLINE on :8080"
+    else
+        echo "  Proxy: starting (may take a few seconds)"
+    fi
+
+    echo "Starting bot..."
+    bootstrap_if_needed "$BOT_LABEL" "$BOT_PLIST"
+    if [[ -z "$(service_pid "$BOT_LABEL")" ]] || [[ "$(service_pid "$BOT_LABEL")" == "0" ]]; then
+        launchctl kickstart "$DOMAIN/$BOT_LABEL" 2>/dev/null || true
+    fi
+    echo "  Bot: started"
+
+    echo ""
+    cmd_status
+}
+
+cmd_stop() {
+    echo "Stopping bot..."
+    if is_registered "$BOT_LABEL"; then
+        launchctl kill SIGTERM "$DOMAIN/$BOT_LABEL" 2>/dev/null || true
+        echo "  Bot: stopped"
+    else
+        echo "  Bot: not registered"
+    fi
+
+    echo "Stopping proxy..."
+    if is_registered "$PROXY_LABEL"; then
+        launchctl kill SIGTERM "$DOMAIN/$PROXY_LABEL" 2>/dev/null || true
+        echo "  Proxy: stopped"
+    else
+        echo "  Proxy: not registered"
+    fi
+}
+
+cmd_restart() {
+    echo "Restarting services..."
+    ensure_log_dir
+
+    echo "Restarting proxy..."
+    if is_registered "$PROXY_LABEL"; then
+        launchctl kickstart -k "$DOMAIN/$PROXY_LABEL" 2>/dev/null || true
+    else
+        bootstrap_if_needed "$PROXY_LABEL" "$PROXY_PLIST"
+        launchctl kickstart "$DOMAIN/$PROXY_LABEL" 2>/dev/null || true
+    fi
+
+    sleep 1
+
+    echo "Restarting bot..."
+    if is_registered "$BOT_LABEL"; then
+        launchctl kickstart -k "$DOMAIN/$BOT_LABEL" 2>/dev/null || true
+    else
+        bootstrap_if_needed "$BOT_LABEL" "$BOT_PLIST"
+        launchctl kickstart "$DOMAIN/$BOT_LABEL" 2>/dev/null || true
+    fi
+
+    echo ""
+    cmd_status
+}
+
+cmd_status() {
+    echo "=== Anti-claw Status ==="
+    service_status "$PROXY_LABEL" "Proxy (8080)"
+    service_status "$BOT_LABEL"   "Bot"
+
+    echo ""
+    echo "=== Proxy Health ==="
+    if curl -s --max-time 2 http://localhost:8080/v1/models &>/dev/null; then
+        echo "  localhost:8080: ONLINE"
+    else
+        echo "  localhost:8080: OFFLINE"
+    fi
+
+    echo ""
+    echo "=== Recent Bot Log ==="
+    if [[ -f "$LOG_BOT" ]]; then
+        tail -5 "$LOG_BOT" | sed 's/^/  /'
+    else
+        echo "  (no log yet)"
+    fi
+}
+
+cmd_logs() {
+    local target="${1:-all}"
+    ensure_log_dir
+
+    case "$target" in
+        bot)
+            echo "Tailing bot log ($LOG_BOT) — Ctrl-C to stop"
+            tail -f "$LOG_BOT" 2>/dev/null
+            ;;
+        proxy)
+            echo "Tailing proxy log ($LOG_PROXY) — Ctrl-C to stop"
+            tail -f "$LOG_PROXY" 2>/dev/null
+            ;;
+        err)
+            echo "Tailing error logs — Ctrl-C to stop"
+            tail -f "$LOG_BOT_ERR" "$LOG_PROXY_ERR" 2>/dev/null
+            ;;
+        all|*)
+            echo "Tailing all logs — Ctrl-C to stop"
+            tail -f "$LOG_BOT" "$LOG_PROXY" "$LOG_BOT_ERR" "$LOG_PROXY_ERR" 2>/dev/null
+            ;;
+    esac
+}
+
+cmd_help() {
+    cat <<'EOF'
+aclaw — Anti-claw management CLI
+
+USAGE:
+  aclaw <command> [subcommand]
+
+COMMANDS:
+  start           Start proxy + bot daemons
+  stop            Stop proxy + bot daemons
+  restart         Restart both (picks up code changes)
+  status          Show status of both services + proxy health
+  logs            Tail all logs live (Ctrl-C to stop)
+  logs bot        Tail bot application log only
+  logs proxy      Tail proxy stdout only
+  logs err        Tail error logs (crashes, import errors)
+
+DAEMONS:
+  Proxy:  com.antigravity-claude-proxy  → localhost:8080
+  Bot:    com.anti-claw.daemon          → Telegram polling
+
+NOTES:
+  • First-time setup: run 'aclaw start' once to register both daemons.
+  • After code changes: 'aclaw restart' is enough.
+  • To fully unregister daemons (rare):
+      launchctl bootout gui/$(id -u)/com.anti-claw.daemon
+      launchctl bootout gui/$(id -u)/com.antigravity-claude-proxy
+EOF
+}
+
+# ── main ─────────────────────────────────────────────────────────────────────
+
+CMD="${1:-help}"
+shift 2>/dev/null || true
+
+case "$CMD" in
+    start)   cmd_start ;;
+    stop)    cmd_stop ;;
+    restart) cmd_restart ;;
+    status)  cmd_status ;;
+    logs)    cmd_logs "${1:-all}" ;;
+    help|--help|-h) cmd_help ;;
+    *)
+        echo "Unknown command: $CMD"
+        echo "Run 'aclaw help' for usage."
+        exit 1
+        ;;
+esac
