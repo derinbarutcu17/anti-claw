@@ -90,7 +90,7 @@ class ToolRegistry:
             },
             {
                 "name": "memory_write",
-                "description": "Save an important fact or decision to persistent long-term memory (MEMORY.md). Use this mid-task when you learn something worth keeping forever: project locations, user preferences, system configs, completed milestones, solved problems. This survives across all sessions.",
+                "description": "Save an important fact or decision to persistent long-term memory (vector store). Use this mid-task when you learn something worth keeping forever: project locations, user preferences, system configs, completed milestones, solved problems. This survives across all sessions.",
                 "input_schema": {
                     "type": "object",
                     "properties": {
@@ -105,18 +105,39 @@ class ToolRegistry:
                 },
             },
             {
-                "name": "memory_read",
-                "description": "Read the full MEMORY.md file — your long-term curated knowledge base. Use when you need more context than what's already in your system prompt.",
+                "name": "reflect",
+                "description": "Analyze an error and formulate a revised plan before retrying.",
                 "input_schema": {
                     "type": "object",
-                    "properties": {},
-                    "required": [],
+                    "properties": {
+                        "error_analysis": {"type": "string", "description": "Analysis of why the previous action failed."},
+                        "revised_plan": {"type": "string", "description": "Step-by-step plan on how to proceed."}
+                    },
+                    "required": ["error_analysis", "revised_plan"],
+                },
+            },
+            {
+                "name": "gemini_cli",
+                "description": (
+                    "Run the Gemini CLI in headless mode. Use for: complex multi-step reasoning, "
+                    "code review, long analysis, or a second model's perspective. "
+                    "Returns plain text output."
+                ),
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "prompt": {"type": "string", "description": "The prompt to send to Gemini."},
+                        "model": {
+                            "type": "string",
+                            "description": "Optional model (e.g. gemini-2.5-pro, gemini-3-flash). Default: gemini-2.5-flash.",
+                        },
+                    },
+                    "required": ["prompt"],
                 },
             },
         ]
-
     async def execute_bash(self, command: str) -> str:
-        """Executes a bash command and returns the output."""
+        """Executes a bash command locally and returns the output."""
         if not safety_manager.is_command_safe(command):
             return "BLOCKED: Command contains blocked patterns or attempts to access secrets."
 
@@ -141,7 +162,7 @@ class ToolRegistry:
                 err = stderr.decode("utf-8", errors="replace")
                 if err:
                     output += "\nSTDERR:\n" + err
-            # Cap output at 50KB
+
             if len(output) > 50000:
                 output = output[:50000] + "\n... (truncated)"
             return output if output.strip() else "(no output)"
@@ -245,22 +266,27 @@ class ToolRegistry:
             return f"ERROR: Web fetch failed: {e}"
 
     async def execute_memory_write(self, content: str, category: str = "GENERAL") -> str:
-        """Appends a fact to MEMORY.md."""
+        """Appends a fact to the memory store."""
         try:
-            from memory.memory_file import memory_file
-            memory_file.append(content, category)
-            return f"Saved to memory: [{category}] {content[:100]}"
+            from memory.store import memory_store
+            memory_store.add_memory(content, category, source="manual")
+            return f"Saved to memory vector store: [{category}] {content[:100]}"
         except Exception as e:
             return f"Failed to write memory: {e}"
 
-    async def execute_memory_read(self) -> str:
-        """Returns the full content of MEMORY.md."""
-        try:
-            from memory.memory_file import memory_file
-            content = memory_file.read()
-            return content if content else "MEMORY.md is empty."
-        except Exception as e:
-            return f"Failed to read memory: {e}"
+    async def execute_reflect(self, error_analysis: str, revised_plan: str) -> str:
+        """Handles agent reflection upon repeated errors."""
+        return f"Reflection logged. You may now proceed with your revised plan:\n{revised_plan}"
+
+    async def execute_gemini_cli(self, prompt: str, model: str = "gemini-2.5-flash") -> str:
+        """Runs gemini CLI in headless mode and returns output."""
+        import shlex
+        gemini_bin = os.path.expanduser("~/.npm-global/bin/gemini")
+        if not os.path.exists(gemini_bin):
+            return "ERROR: gemini CLI not found at ~/.npm-global/bin/gemini"
+        safe_prompt = shlex.quote(prompt)
+        cmd = f"{gemini_bin} -p {safe_prompt} --approval-mode yolo -m {model}"
+        return await self.execute_bash(cmd)
 
     async def execute_memory_search(self, query: str, limit: int = 5) -> str:
         """Performs semantic search over past conversations."""

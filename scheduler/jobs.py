@@ -2,7 +2,6 @@ import asyncio
 import logging
 from datetime import datetime
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from apscheduler.jobstores.sqlalchemy import SQLAlchemyJobStore
 from apscheduler.triggers.interval import IntervalTrigger
 from apscheduler.triggers.date import DateTrigger
 from apscheduler.triggers.cron import CronTrigger
@@ -21,43 +20,69 @@ RETRY_DELAYS = [30, 60, 300]
 
 
 class SchedulerManager:
-    """Manages recurring jobs using APScheduler with SQLite persistence."""
+    """Manages recurring jobs using APScheduler with in-memory store + DB-backed re-hydration."""
 
     def __init__(self, bot, admin_user_id: int):
         self.bot = bot
         self.admin_user_id = admin_user_id
-
-        jobstores = {
-            "default": SQLAlchemyJobStore(url=f"sqlite:///{settings.DATABASE_PATH}")
-        }
-        self.scheduler = AsyncIOScheduler(jobstores=jobstores)
+        # MemoryJobStore (default) — no pickle fragility across restarts
+        self.scheduler = AsyncIOScheduler()
 
     async def start(self):
-        """Initializes built-in jobs and starts the scheduler."""
+        """Initializes built-in jobs, restores user jobs, and starts the scheduler."""
         global _bot, _admin_user_id
         _bot = self.bot
         _admin_user_id = self.admin_user_id
 
-        if not self.scheduler.get_job("health_check"):
-            self.scheduler.add_job(
-                self.health_check_job, "interval", minutes=30,
-                id="health_check", replace_existing=True,
-            )
-
-        if not self.scheduler.get_job("nightly_heartbeat"):
-            self.scheduler.add_job(
-                self.nightly_heartbeat_job, "cron", hour=2, minute=0,
-                id="nightly_heartbeat", replace_existing=True,
-            )
-
-        if not self.scheduler.get_job("summarization"):
-            self.scheduler.add_job(
-                self.summarize_memory_job, "cron", hour=3, minute=0,
-                id="summarization", replace_existing=True,
-            )
+        self.scheduler.add_job(
+            self.health_check_job, "interval", minutes=30,
+            id="health_check", replace_existing=True,
+        )
+        self.scheduler.add_job(
+            self.nightly_heartbeat_job, "cron", hour=2, minute=0,
+            id="nightly_heartbeat", replace_existing=True,
+        )
+        self.scheduler.add_job(
+            self.summarize_memory_job, "cron", hour=3, minute=0,
+            id="summarization", replace_existing=True,
+        )
 
         self.scheduler.start()
         logger.info("Scheduler started (health, heartbeat, summarization).")
+
+        # Restore user-created cron jobs from the database
+        await self._restore_user_jobs()
+
+    async def _restore_user_jobs(self):
+        """Re-hydrates user cron jobs from the scheduled_jobs DB table."""
+        from memory.store import memory_store
+        jobs = memory_store.get_cron_jobs()
+        restored = 0
+        for job in jobs:
+            if not job.get("enabled", 1):
+                continue
+            jid = job["job_id"]
+            stype = job.get("schedule_type", "cron")
+            expr = job.get("cron_expression", "")
+            prompt = job.get("prompt", "")
+            name = job.get("name", jid)
+            try:
+                if stype == "every":
+                    add_interval_job(self.scheduler, prompt, name, jid, int(expr))
+                elif stype == "at":
+                    run_date = datetime.strptime(expr, "%Y-%m-%d %H:%M")
+                    if run_date > datetime.now():
+                        add_onetime_job(self.scheduler, prompt, name, jid, run_date)
+                    else:
+                        memory_store.delete_cron_job(jid)
+                        continue
+                else:
+                    add_cron_job(self.scheduler, prompt, name, jid, expr)
+                restored += 1
+            except Exception as e:
+                logger.warning(f"Could not restore cron job {jid}: {e}")
+        if restored:
+            logger.info(f"Restored {restored} user cron job(s) from database.")
 
     # ── System jobs ──────────────────────────────────────────────────────────
 
@@ -95,12 +120,11 @@ class SchedulerManager:
     async def run_scheduled_task(prompt: str, job_id: str, name: str = "", delete_after_run: bool = False):
         """Runs a user-scheduled task with exponential backoff retry and run history."""
         from memory.store import memory_store
-        from memory.memory_file import memory_file
 
         display_name = name or job_id
         logger.info(f"Scheduled task starting: [{job_id}] {display_name}")
 
-        # Build system prompt with SOUL.md + MEMORY.md (same as regular tasks)
+        # Build system prompt with SOUL.md
         try:
             soul_path = settings.PROJECT_ROOT / "SOUL.md"
             soul_template = soul_path.read_text(encoding="utf-8")
@@ -111,10 +135,6 @@ class SchedulerManager:
             )
         except Exception:
             system_prompt = "You are Kaira executing a scheduled task. Be concise."
-
-        mem_context = memory_file.get_inject_context()
-        if mem_context.strip():
-            system_prompt += f"\n\n## Long-term Memory\n{mem_context}"
 
         system_prompt += f"\n\n[Scheduled task: {display_name} | ID: {job_id}]"
 

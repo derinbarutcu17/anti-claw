@@ -4684,3 +4684,48 @@ anthropic.APIConnectionError: Connection error.
 2026-03-03 22:30:22,676 - scheduler.jobs - INFO - Scheduler started (health, heartbeat, summarization).
 2026-03-03 22:30:23,048 - aiogram.dispatcher - INFO - Start polling
 2026-03-03 22:30:23,123 - aiogram.dispatcher - INFO - Run polling for bot @derinbbot id=8200064565 - 'Derin-Bot'
+2026-03-03 22:54:45,585 - aiogram.dispatcher - WARNING - Received SIGTERM signal
+2026-03-03 22:54:45,591 - aiogram.dispatcher - INFO - Polling stopped for bot @derinbbot id=8200064565 - 'Derin-Bot'
+2026-03-03 22:54:45,591 - aiogram.dispatcher - INFO - Polling stopped
+2026-03-03 22:54:45,861 - anti-claw - INFO - Anti-claw shut down.
+2026-03-03 22:54:46,631 - anti-claw - INFO - Starting Anti-claw...
+2026-03-03 22:54:51,598 - sentence_transformers.SentenceTransformer - INFO - Load pretrained SentenceTransformer: all-MiniLM-L6-v2
+2026-03-03 22:54:51,820 - httpx - INFO - HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/modules.json "HTTP/1.1 307 Temporary Redirect"
+2026-03-03 22:54:51,839 - httpx - INFO - HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/sentence-transformers/all-MiniLM-L6-v2/c9745ed1d9f207416be6d2e6f8de32d1f16199bf/modules.json "HTTP/1.1 200 OK"
+2026-03-03 22:54:52,003 - httpx - INFO - HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/config_sentence_transformers.json "HTTP/1.1 307 Temporary Redirect"
+2026-03-03 22:54:52,004 - huggingface_hub.utils._http - WARNING - Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+2026-03-03 22:54:52,022 - httpx - INFO - HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/sentence-transformers/all-MiniLM-L6-v2/c9745ed1d9f207416be6d2e6f8de32d1f16199bf/config_sentence_transformers.json "HTTP/1.1 200 OK"
+2026-03-03 22:54:52,185 - httpx - INFO - HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/config_sentence_transformers.json "HTTP/1.1 307 Temporary Redirect"
+2026-03-03 22:54:52,204 - httpx - INFO - HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/sentence-transformers/all-MiniLM-L6-v2/c9745ed1d9f207416be6d2e6f8de32d1f16199bf/config_sentence_transformers.json "HTTP/1.1 200 OK"
+2026-03-03 22:54:52,367 - httpx - INFO - HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/README.md "HTTP/1.1 307 Temporary Redirect"
+2026-03-03 22:54:52,466 - httpx - INFO - HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/sentence-transformers/all-MiniLM-L6-v2/c9745ed1d9f207416be6d2e6f8de32d1f16199bf/README.md "HTTP/1.1 200 OK"
+2026-03-03 22:54:52,667 - httpx - INFO - HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/modules.json "HTTP/1.1 307 Temporary Redirect"
+2026-03-03 22:54:52,686 - httpx - INFO - HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/sentence-transformers/all-MiniLM-L6-v2/c9745ed1d9f207416be6d2e6f8de32d1f16199bf/modules.json "HTTP/1.1 200 OK"
+2026-03-03 22:54:52,857 - httpx - INFO - HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/sentence_bert_config.json "HTTP/1.1 307 Temporary Redirect"
+2026-03-03 22:54:52,875 - httpx - INFO - HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/sentence-transformers/all-MiniLM-L6-v2/c9745ed1d9f207416be6d2e6f8de32d1f16199bf/sentence_bert_config.json "HTTP/1.1 200 OK"
+2026-03-03 22:54:53,038 - httpx - INFO - HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/adapter_config.json "HTTP/1.1 404 Not Found"
+2026-03-03 22:54:53,201 - httpx - INFO - HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/config.json "HTTP/1.1 307 Temporary Redirect"
+2026-03-03 22:54:53,218 - httpx - INFO - HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/sentence-transformers/all-MiniLM-L6-v2/c9745ed1d9f207416be6d2e6f8de32d1f16199bf/config.json "HTTP/1.1 200 OK"
+2026-03-03 22:54:53,539 - httpx - INFO - HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/config.json "HTTP/1.1 307 Temporary Redirect"
+2026-03-03 22:54:53,559 - httpx - INFO - HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/sentence-transformers/all-MiniLM-L6-v2/c9745ed1d9f207416be6d2e6f8de32d1f16199bf/config.json "HTTP/1.1 200 OK"
+2026-03-03 22:54:53,718 - httpx - INFO - HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/tokenizer_config.json "HTTP/1.1 307 Temporary Redirect"
+2026-03-03 22:54:53,734 - httpx - INFO - HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/sentence-transformers/all-MiniLM-L6-v2/c9745ed1d9f207416be6d2e6f8de32d1f16199bf/tokenizer_config.json "HTTP/1.1 200 OK"
+2026-03-03 22:54:53,902 - httpx - INFO - HTTP Request: GET https://huggingface.co/api/models/sentence-transformers/all-MiniLM-L6-v2/tree/main/additional_chat_templates?recursive=false&expand=false "HTTP/1.1 404 Not Found"
+2026-03-03 22:54:54,072 - httpx - INFO - HTTP Request: GET https://huggingface.co/api/models/sentence-transformers/all-MiniLM-L6-v2/tree/main?recursive=true&expand=false "HTTP/1.1 200 OK"
+2026-03-03 22:54:54,303 - httpx - INFO - HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/1_Pooling/config.json "HTTP/1.1 307 Temporary Redirect"
+2026-03-03 22:54:54,324 - httpx - INFO - HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/sentence-transformers/all-MiniLM-L6-v2/c9745ed1d9f207416be6d2e6f8de32d1f16199bf/1_Pooling%2Fconfig.json "HTTP/1.1 200 OK"
+2026-03-03 22:54:54,568 - httpx - INFO - HTTP Request: GET https://huggingface.co/api/models/sentence-transformers/all-MiniLM-L6-v2 "HTTP/1.1 200 OK"
+2026-03-03 22:54:55,140 - anti-claw - INFO - Starting Telegram polling...
+2026-03-03 22:54:55,145 - api.server - INFO - Dashboard server running at http://0.0.0.0:3000
+2026-03-03 22:54:55,146 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2026-03-03 22:54:55,146 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2026-03-03 22:54:55,146 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2026-03-03 22:54:55,147 - apscheduler.scheduler - INFO - Added job "SchedulerManager.health_check_job" to job store "default"
+2026-03-03 22:54:55,147 - apscheduler.scheduler - INFO - Added job "SchedulerManager.nightly_heartbeat_job" to job store "default"
+2026-03-03 22:54:55,147 - apscheduler.scheduler - INFO - Added job "SchedulerManager.summarize_memory_job" to job store "default"
+2026-03-03 22:54:55,147 - apscheduler.scheduler - INFO - Scheduler started
+2026-03-03 22:54:55,148 - scheduler.jobs - INFO - Scheduler started (health, heartbeat, summarization).
+2026-03-03 22:54:55,442 - aiogram.dispatcher - INFO - Start polling
+2026-03-03 22:54:55,624 - aiogram.dispatcher - INFO - Run polling for bot @derinbbot id=8200064565 - 'Derin-Bot'
+2026-03-03 22:57:52,313 - httpx - INFO - HTTP Request: POST http://localhost:8080/v1/messages "HTTP/1.1 200 OK"
+2026-03-03 22:57:53,254 - aiogram.event - INFO - Update id=290659430 is handled. Duration 3341 ms by bot id=8200064565

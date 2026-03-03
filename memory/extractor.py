@@ -1,7 +1,7 @@
 import logging
 from anthropic import AsyncAnthropic
 from config.settings import settings
-from memory.memory_file import memory_file
+from memory.store import memory_store
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +31,7 @@ If nothing is worth saving, output exactly: NONE\
 
 
 class MemoryExtractor:
-    """Extracts key facts from a conversation and appends them to MEMORY.md."""
+    """Extracts key facts from a conversation and appends them to the vector store."""
 
     def __init__(self):
         self.client = AsyncAnthropic(
@@ -42,7 +42,7 @@ class MemoryExtractor:
 
     async def extract_and_save(self, user_prompt: str, assistant_response: str) -> int:
         """
-        Extracts memorable facts from a conversation and appends to MEMORY.md.
+        Extracts memorable facts from a conversation and appends to vector DB.
         Returns the number of facts saved. Skips trivial exchanges.
         """
         # Skip very short or trivial responses
@@ -86,11 +86,11 @@ class MemoryExtractor:
                 category = "GENERAL"
 
             if content:
-                memory_file.append(content, category)
+                memory_store.add_memory(content, category, source="auto-extract")
                 count += 1
 
         if count:
-            logger.info(f"Memory extractor saved {count} fact(s) to MEMORY.md")
+            logger.info(f"Memory extractor saved {count} fact(s) to vector DB")
 
         return count
 

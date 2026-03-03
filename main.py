@@ -60,6 +60,10 @@ async def main():
         # Start the scheduler
         await sched.start()
 
+        # Set the global so run_scheduled_task can clean up one-shot jobs
+        import scheduler.jobs as _sched_module
+        _sched_module.scheduler_manager = sched
+
         # Alert admin
         try:
             await bot.send_message(

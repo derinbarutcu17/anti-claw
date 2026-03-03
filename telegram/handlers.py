@@ -50,9 +50,9 @@ Type /help 2 for memory commands.\
 ── MEMORY ────────────────────────────────────
 Kaira has two memory layers:
 
-  LONG-TERM (MEMORY.md)
-  Permanent curated facts. Loaded into every session
-  automatically. Survives /new and restarts.
+  LONG-TERM (Vector Store)
+  Permanent curated facts. Accessible via memory tools.
+  Survives /new and restarts.
 
   SHORT-TERM (session turns)
   Last 10 turns of conversation. Cleared by /new.
@@ -67,9 +67,9 @@ Commands:
 
 Auto-memory: after every response Kaira automatically
 extracts and saves key facts (projects, decisions,
-preferences) to MEMORY.md without you asking.
+preferences) to the vector store without you asking.
 
-Kaira can also call memory_write and memory_read
+Kaira can also call memory_write and memory_search
 mid-task to save or retrieve facts herself.
 
 Type /help 3 for model + cron commands.\
@@ -111,29 +111,28 @@ Type /help 4 for system + capabilities.\
 ── SYSTEM ────────────────────────────────────
   /status    Proxy health, active model, session turns,
              memory count, scheduled jobs
+  /limits    Show what Kaira can and cannot do
 
 ── WHAT KAIRA CAN DO ─────────────────────────
 Kaira has full tool access inside a sandboxed
 workspace. She can:
 
-  bash          Run any shell command
-                (blocked: rm -rf /, sudo, shutdown)
+  bash          Run shell commands
   read_file     Read files in workspace + allowed paths
   write_file    Write files to workspace
   web_search    DuckDuckGo search
   web_fetch     Fetch and read any URL
-  memory_write  Save a fact to MEMORY.md mid-task
-  memory_read   Read full MEMORY.md
+  gemini_cli    Run Gemini CLI for second opinions
+  memory_write  Save a fact to memory mid-task
   memory_search Semantic search over past conversations
+  reflect       Analyze errors and revise approach
 
-Retries: max 3 per tool, then she pivots.
-Output: tool results are never echoed raw —
-        only the intended answer reaches you.
+She can also edit her own source code (SOUL.md,
+handlers, tools) — restart needed to apply.
 
 ── NIGHTLY JOBS ──────────────────────────────
-  2:00 AM  Compaction: summarizes conversations,
-           updates MEMORY.md with past work timeline
-  3:00 AM  Memory summarization of raw conversations
+  2:00 AM  Compaction + nightly heartbeat
+  3:00 AM  Memory summarization
   Every 30m  Proxy health check
 
 /help      Show page 1 again\
@@ -636,6 +635,34 @@ async def cmd_cron(message: Message, command: CommandObject):
     )
 
 
+@router.message(Command("limits"))
+async def cmd_limits(message: Message):
+    allowed = ", ".join(str(p) for p in settings.ALLOWED_PATHS) or str(settings.AGENT_WORKSPACE)
+    text = (
+        "Kaira's Limits\n\n"
+        "CANNOT:\n"
+        "  Self-restart (Derin runs: aclaw restart)\n"
+        "  GUI / browser / screenshots\n"
+        "  Email or SMS (Telegram only)\n"
+        "  sudo or system-destructive commands\n"
+        "  Read .env / API secrets\n\n"
+        "FILESYSTEM:\n"
+        f"  Allowed: {allowed}\n\n"
+        "MEMORY:\n"
+        "  Session: last 10 turns (clears on /new)\n"
+        "  Long-term: semantic vector store (permanent)\n\n"
+        "PROXY:\n"
+        f"  Model: {settings.ANTHROPIC_MODEL}\n"
+        "  Via: localhost:8080 (antigravity-claude-proxy)\n\n"
+        "CAN:\n"
+        "  bash, read/write files, web search+fetch\n"
+        "  Edit own source files (restart to apply)\n"
+        "  Cron jobs, memory, scheduled tasks\n"
+        "  gemini_cli (second model for reasoning)"
+    )
+    await message.reply(text, parse_mode=None)
+
+
 @router.message(Command("task"))
 async def cmd_task(message: Message, command: CommandObject):
     user_prompt = (command.args or "").strip() if command else ""
@@ -709,14 +736,8 @@ async def _run_task(message: Message, user_prompt: str):
         except Exception as e:
             logger.warning(f"Failed to fetch session history: {e}")
 
-    # Inject MEMORY.md (long-term curated knowledge — always available)
-    try:
-        from memory.memory_file import memory_file
-        mem_context = memory_file.get_inject_context()
-        if mem_context.strip():
-            system_prompt += f"\n\n## Long-term Memory\n{mem_context}"
-    except Exception as e:
-        logger.warning(f"Failed to inject MEMORY.md: {e}")
+    # Flat-file MEMORY.md injection removed
+    # The agent relies entirely on Vector store retrievals natively.
 
     try:
         response_text = await agent.run(

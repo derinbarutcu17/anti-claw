@@ -2,10 +2,17 @@ import asyncio
 import logging
 from typing import Dict, Any, Optional, Callable, Awaitable
 from anthropic import AsyncAnthropic
+
 from config.settings import settings
 from core.tools import tool_registry
 
 logger = logging.getLogger(__name__)
+
+try:
+    from opentelemetry import trace
+    tracer = trace.get_tracer(__name__)
+except ImportError:
+    tracer = None
 
 
 class AgentLoop:
@@ -51,6 +58,9 @@ class AgentLoop:
             messages.append({"role": "assistant", "content": turn["assistant"]})
         messages.append({"role": "user", "content": user_prompt})
         full_response_text = ""
+        
+        tool_errors = {}
+        needs_reflection = False
 
         try:
             for iteration in range(self.max_iterations):
@@ -88,8 +98,22 @@ class AgentLoop:
                         if on_tool_start:
                             await on_tool_start(block.name, block.input)
 
-                        logger.info(f"[{task_id}] Executing tool: {block.name}")
-                        result = await self._dispatch_tool(block.name, block.input)
+                        if needs_reflection and block.name in ("bash", "write_file", "read_file"):
+                            result = "CIRCUIT BREAKER ACTIVE: You hit the same error multiple times. You MUST call the `reflect` tool to analyze the failure and state a revised plan before acting."
+                        else:
+                            if block.name == "reflect":
+                                needs_reflection = False
+
+                            logger.info(f"[{task_id}] Executing tool: {block.name}")
+                            result = await self._dispatch_tool(block.name, block.input)
+
+                            res_str = str(result)
+                            if res_str.startswith("ERROR:") or res_str.startswith("BLOCKED:"):
+                                err_key = (block.name, res_str[:200])
+                                tool_errors[err_key] = tool_errors.get(err_key, 0) + 1
+                                if tool_errors[err_key] >= 2:
+                                    needs_reflection = True
+                                    result = res_str + "\n\n[CIRCUIT BREAKER TRIGGERED: Repeated error. Next action MUST be `reflect`]"
 
                         if on_tool_end:
                             await on_tool_end(block.name, result)
@@ -115,7 +139,7 @@ class AgentLoop:
             except Exception as e:
                 logger.warning(f"Failed to save conversation to memory: {e}")
 
-            # Fire-and-forget: extract key facts and write to MEMORY.md
+            # Try to fire-and-forget: extract key facts directly into Vector store
             asyncio.create_task(self._extract_memories(user_prompt, full_response_text))
 
             return full_response_text
@@ -136,7 +160,7 @@ class AgentLoop:
             self.active_tasks.pop(task_id, None)
 
     async def _extract_memories(self, user_prompt: str, response: str):
-        """Extracts key facts from a completed task and writes them to MEMORY.md."""
+        """Extracts key facts from a completed task and saves to vector db."""
         try:
             from memory.extractor import memory_extractor
             await memory_extractor.extract_and_save(user_prompt, response)
@@ -170,7 +194,14 @@ class AgentLoop:
             return await tool_registry.execute_memory_write(
                 input_data["content"], input_data.get("category", "GENERAL")
             )
-        elif name == "memory_read":
-            return await tool_registry.execute_memory_read()
+        elif name == "reflect":
+            return await tool_registry.execute_reflect(
+                input_data["error_analysis"], input_data["revised_plan"]
+            )
+        elif name == "gemini_cli":
+            return await tool_registry.execute_gemini_cli(
+                input_data["prompt"],
+                input_data.get("model", "gemini-2.5-flash"),
+            )
         else:
             return f"Error: Tool '{name}' not found."

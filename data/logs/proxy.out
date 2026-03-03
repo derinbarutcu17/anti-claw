@@ -182,3 +182,64 @@
 [90m[2026-03-03T16:47:22.162Z][0m [34m[INFO][0m [GET] /health 200 (902ms)
 [90m[2026-03-03T17:17:21.718Z][0m [34m[INFO][0m [GET] /health 200 (493ms)
 [90m[2026-03-03T17:47:21.777Z][0m [34m[INFO][0m [GET] /health 200 (526ms)
+[90m[2026-03-03T19:54:44.979Z][0m [34m[INFO][0m [WebUI] Mounted at /
+
+╔══════════════════════════════════════════════════════════════╗
+║            Antigravity Claude Proxy Server v2.7.8            ║
+╠══════════════════════════════════════════════════════════════╣
+║                                                              ║
+║  Server and WebUI running at: http://localhost:8080          ║
+║  Bound to: 0.0.0.0:8080                                      ║
+║                                                              ║
+║  Active Modes:                                               ║
+║    ✓ Strategy: Hybrid (Smart Distribution)                   ║
+║                                                              ║
+║  Control:                                                    ║
+║    --strategy=<s>     Set account selection strategy         ║
+║                         (sticky/round-robin/hybrid)          ║
+║    --dev-mode         Enable developer mode                  ║
+║    --fallback         Enable model fallback on quota exhaust ║
+║    Ctrl+C             Stop server                            ║
+║                                                              ║
+║  Endpoints:                                                  ║
+║    POST /v1/messages         - Anthropic Messages API        ║
+║    GET  /v1/models           - List available models         ║
+║    GET  /health              - Health check                  ║
+║    GET  /account-limits      - Account status & quotas       ║
+║    POST /refresh-token       - Force token refresh           ║
+║                                                              ║
+║  Configuration:                                              ║
+║    Storage: /Users/derin/.antigravity-claude-proxy           ║
+║                                                              ║
+║  Usage with Claude Code:                                     ║
+║    export ANTHROPIC_BASE_URL=http://localhost:8080           ║
+║    export ANTHROPIC_API_KEY=dummy                            ║
+║    claude                                                    ║
+║                                                              ║
+║  Add Google accounts:                                        ║
+║    npm run accounts                                          ║
+║                                                              ║
+║  Prerequisites (if no accounts configured):                  ║
+║    - Antigravity must be running                             ║
+║    - Have a chat panel open in Antigravity                   ║
+║                                                              ║
+║  Environment Variables:                                      ║
+║    PORT                Server port (default: 8080)           ║
+║    HOST                Bind address (default: 0.0.0.0)       ║
+║    HTTP_PROXY          Route requests through a proxy        ║
+║    CLAUDE_CONFIG_PATH  Path to .claude dir (for systemd)     ║
+║    See README.md for detailed configuration examples         ║
+╚══════════════════════════════════════════════════════════════╝
+  
+[90m[2026-03-03T19:54:44.987Z][0m [32m[SUCCESS][0m Server started successfully on port 8080
+[90m[2026-03-03T19:54:46.557Z][0m [34m[INFO][0m [AccountManager] Loaded 1 account(s) from config
+[90m[2026-03-03T19:54:46.557Z][0m [34m[INFO][0m [AccountManager] Using Hybrid (Smart Distribution) selection strategy
+[90m[2026-03-03T19:54:46.558Z][0m [32m[SUCCESS][0m [Server] Account pool initialized: 1 total, 1 available, 0 rate-limited, 0 invalid
+[90m[2026-03-03T19:54:46.559Z][0m [34m[INFO][0m [HybridStrategy] Using account: derinbarutcu@gmail.com (1/1, score: 1150.0)
+[90m[2026-03-03T19:54:47.306Z][0m [34m[INFO][0m [GET] /v1/models 200 (752ms)
+[90m[2026-03-03T19:56:34.333Z][0m [34m[INFO][0m [HybridStrategy] Using account: derinbarutcu@gmail.com (1/1, score: 800.8)
+[90m[2026-03-03T19:56:34.904Z][0m [34m[INFO][0m [GET] /v1/models 200 (572ms)
+[90m[2026-03-03T19:57:50.398Z][0m [34m[INFO][0m [HybridStrategy] Using account: derinbarutcu@gmail.com (1/1, score: 797.6)
+[90m[2026-03-03T19:57:50.399Z][0m [34m[INFO][0m [API] Request for model: gemini-3-flash, stream: false
+[90m[2026-03-03T19:57:50.401Z][0m [34m[INFO][0m [HybridStrategy] Using account: derinbarutcu@gmail.com (1/1, score: 630.0)
+[90m[2026-03-03T19:57:52.310Z][0m [34m[INFO][0m [POST] /v1/messages 200 (1912ms)
